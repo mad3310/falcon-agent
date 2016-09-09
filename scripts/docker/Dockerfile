@@ -1,0 +1,27 @@
+FROM letv:centos6
+MAINTAINER liujinliu <liujinliu@le.com>
+
+RUN rpm -ivh http://pkg-repo.oss.letv.com/pkgs/centos6/letv-release.noarch.rpm
+#ADD init/CentOS-epel.repo /etc/yum.resp.d/CentOS-epel.repo
+ADD init/python-virtualenv-1.10.1-1.el6.noarch.rpm /tmp/python-virtualenv-1.10.1-1.el6.noarch.rpm
+ADD init/Lefalcon-agent-1.0-1.el6.x86_64.rpm /tmp/Lefalcon-agent-1.0-1.el6.x86_64.rpm
+RUN yum install -y python-setuptools
+RUN yum install -y python2-devel
+RUN rpm -ivh /tmp/python-virtualenv-1.10.1-1.el6.noarch.rpm
+RUN rpm -ivh /tmp/Lefalcon-agent-1.0-1.el6.x86_64.rpm
+RUN yum install -y vim
+RUN yum install -y unzip
+RUN yum install -y tar
+
+RUN alias vi='vim'
+RUN alias ll='ls -l'
+
+RUN mkdir -p /usr/local/init/
+ADD init/init.sh /usr/local/init/init.sh
+RUN chmod 755 /usr/local/init/init.sh
+
+#RUN yum install -y es_pack 
+#RUN yum install -y gcp-falcon-agent 
+
+#ENTRYPOINT bash /usr/local/init/init.sh && service falcon-agent start &&  /bin/bash
+ENTRYPOINT bash /usr/local/init/init.sh && /bin/bash
