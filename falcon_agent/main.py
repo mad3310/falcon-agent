@@ -6,10 +6,12 @@ from es_pack.resource import CommResource as es_res
 from routers import urls
 from alarm_collect import write_all_alarms
 
-define("debug", default=False, help="debug", type=bool)
-define('es_host', default = '10.154.255.131:9200',
+define('debug', default=False, help='debug', type=bool)
+define('es_host', default='10.154.255.131:9200',
         help = 'es host')
-define("http_port", default=8000, help="http_port", type=int)
+define('http_port', default=8000, help='http_port', type=int)
+define('matrix', default='10.154.238.20:8082',
+        help = 'matrix host')
 
 def main():
     tornado.options.parse_command_line()

@@ -12,6 +12,7 @@ import time
 import datetime
 from concurrent.futures import ThreadPoolExecutor
 import logging
+import base64
 
 thread_pool = ThreadPoolExecutor(10)
 
@@ -92,16 +93,20 @@ def get_status_of_target(targets):
     http_client = AsyncHTTPClient()
     resp, alarms, node_names, fetch_error = [], [], [], set()
     for target in targets:
-        ip = target['ip']
+        ip = target['ipAddr']
+        user = target['adminUser']
+        passwd  = target['adminPassword']
         uri = 'http://%s:8888/mcluster/status' %ip
         _tmp = http_client.fetch(uri, method = 'GET',
                 raise_error = False,
                 follow_redirects=True,
+                auth_username = user,
+                auth_password = passwd,
                 allow_nonstandard_methods=True)
         resp.append(_tmp)
     ret = yield resp
     for i in range(len(targets)):
-        node_name = targets[i]['node_name']
+        node_name = targets[i]['clusterName']
         _resp = ret[i]
         if _resp.error:
             fetch_error.add(node_name)
@@ -125,6 +130,7 @@ def write_alarms(server_cluster, targets):
     #TODO
     #need check is there deleted nodes, and those nodes should not
     #record alarm
+    #call http://127.0.0.1:8082/db/containers?hclusterId={server_cluster}
 
     yield thread_pool.submit(_write_alarm_to_es, alarms, node_names,
                                server_cluster)
@@ -133,9 +139,18 @@ def write_alarms(server_cluster, targets):
 
 @coroutine
 def write_all_alarms():
-    server_cluster = 'test'
-    targets = [dict(ip='127.0.0.1',
-                   node_name='test')]
+    # TODO
+    # call the matrix method http://127.0.0.1:8082/api/hcluster
+    # to get all the servers, and store it to server_cluster
+    server_cluster = '48'
+
+    # TODO
+    # call http://127.0.0.1:8082/db/containers?hclusterId=48
+    # to get all the ip of the server cluster
+    targets = [dict(ipAddr='127.0.0.1',
+                   clusterName='test',
+                   adminPassword='root',
+                   adminUser='root')]
     try:
         yield write_alarms(server_cluster, targets)
     except Exception as e:
