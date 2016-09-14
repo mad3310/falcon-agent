@@ -1,5 +1,4 @@
 #coding=utf-8
-
 from tornado.options import define, options
 from tornado.ioloop import PeriodicCallback
 from tornado.web import RequestHandler,HTTPError 
@@ -22,7 +21,7 @@ TIMEOUT_WARN = 'please check async api, the data is out of date!'
 MONITOR_INDEX_IN_ES='cluster-monitor'
 FETCH_ERR_HISTORY = {}
 MAX_FETCH_ERR = 3
-
+MATRIX_AUTH_URL = 'https://login.lecloud.com/nopagelogin?username=matrix&password=matrix' 
 def _fetch_error_update(fetch_error):
     if not FETCH_ERR_HISTORY:
         for _node in fetch_error:
@@ -123,6 +122,51 @@ def get_status_of_target(targets):
     raise Return(dict(alarms=alarms, node_names=node_names))
 
 @coroutine
+def _get_matrix_auth(http_client):
+    auth_uri = MATRIX_AUTH_URL
+    resp = yield http_client.fetch(auth_uri, raise_error=False)
+    if resp.error:
+        logging.error('request for auth failed')
+        raise Return({})
+    auth = json.loads(resp.text) 
+    raise Return(auth)
+
+@coroutine
+def _get_all_cluster():
+    http_client = AsyncHTTPClient()
+    auth = yield _get_matrix_auth()
+    uri = '%s/api/hcluster' %options.matrix
+    req = HTTPRequest(uri, follow_redirects=True,
+                    allow_nonstandard_methods=True,
+                    client_id = auth['client'],
+                    client_secret = auth['client_secret'])
+    resp = yield http_client.fetch(req, raise_error=False)
+    if resp.error:
+        logging.error('request for all hcluster fail')
+        raise Return([])
+    else:
+        ret = map(lambda x:x['id'], json.loads(resp.text))
+        raise Return(ret)
+
+@coroutine
+def _get_all_mysql(server_id)
+    http_client = AsyncHTTPClient()
+    auth = yield _get_matrix_auth()
+    uri = '%s/db/containers?hclusterId=%d' %(options.matrix,
+                                             int(server_id))
+    req = HTTPRequest(uri, follow_redirects=True,
+                    allow_nonstandard_methods=True,
+                    client_id = auth['client'],
+                    client_secret = auth['client_secret'])
+    resp = yield http_client.fetch(req, raise_error=False)
+    if resp.error:
+        logging.error('request for all hcluster fail')
+        raise Return([])
+    else:
+        ret = json.loads(resp.text)
+        raise Return(ret)
+
+@coroutine
 def write_alarms(server_cluster, targets, cluster_type = 'mysql'):
     status_ret = yield get_status_of_target(targets)
     status_ret_fetch_err = fetch_error_check()
@@ -142,20 +186,20 @@ def write_alarms(server_cluster, targets, cluster_type = 'mysql'):
 
 @coroutine
 def write_all_mysql_alarms():
-    # TODO
     # call the matrix method http://127.0.0.1:8082/api/hcluster
     # to get all the servers, and store it to server_cluster
-    server_cluster = '48'
-
-    # TODO
-    # call http://127.0.0.1:8082/db/containers?hclusterId=48
-    # to get all the ip of the server cluster
-    targets = [dict(ipAddr='10.185.81.79',
-                   clusterName='25_for_qa_test_ljl',
-                   adminPassword='root',
-                   adminUser='root')]
-    try:
-        yield write_alarms(server_cluster, targets, 'mysql')
-    except Exception as e:
+    # server_cluster = '48'
+    server_clusters = yield _get_all_cluster()
+    for server_cluster in server_clusters:
+        # call http://127.0.0.1:8082/db/containers?hclusterId=48
+        # to get all the ip of the server cluster
+        #targets = [dict(ipAddr='10.185.81.79',
+        #               clusterName='25_for_qa_test_ljl',
+        #               adminPassword='root',
+        #               adminUser='root')]
+        targets = yield _get_all_mysql(server_cluster)
+        try:
+            yield write_alarms(server_cluster, targets, 'mysql')
+        except Exception as e:
         logging.error(e, exc_info=True)
 
