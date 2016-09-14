@@ -21,6 +21,6 @@ def main():
     app.listen(options.http_port)
     tornado.ioloop.PeriodicCallback(
         write_all_mysql_alarms,
-        12000).start()
+        60000).start()
     tornado.ioloop.IOLoop.instance().start()
 

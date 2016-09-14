@@ -36,7 +36,7 @@ def _fetch_error_update(fetch_error):
             if FETCH_ERR_HISTORY.has_key(node_name):
                 FETCH_ERR_HISTORY[node_name] += 1
             else:
-                FETCH_ERR_HISTORY[node_name] += 1
+                FETCH_ERR_HISTORY[node_name] = 1
 
 def fetch_error_check():
     alarms, node_names = [], []
