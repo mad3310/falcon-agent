@@ -19,7 +19,7 @@ thread_pool = ThreadPoolExecutor(10)
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 WARNING_TIME_DIFF = 210
 TIMEOUT_WARN = 'please check async api, the data is out of date!'
-
+MONITOR_INDEX_IN_ES='cluster-monitor'
 FETCH_ERR_HISTORY = {}
 MAX_FETCH_ERR = 3
 
@@ -50,10 +50,12 @@ def fetch_error_check():
             node_names.append(k)
     return dict(alarms=alarms, node_names=node_names)
 
-def _write_alarm_to_es(alarms, node_names, server_cluster):
-    index = '%s-rds-monitor' % server_cluster
+def _write_alarm_to_es(alarms, node_names, server_cluster,
+                       cluster_type = 'mysql'):
+    index = '%s-%s-%s' %(server_cluster, cluster_type,
+                        MONITOR_INDEX_IN_ES)
     es_res.record_resource_via_bulk(index, 
-        node_names, 'mcluster', alarms)
+        node_names, cluster_type, alarms)
 
 def _monitor_value_parse(resp):
     value = json.loads(resp.body)
@@ -121,7 +123,7 @@ def get_status_of_target(targets):
     raise Return(dict(alarms=alarms, node_names=node_names))
 
 @coroutine
-def write_alarms(server_cluster, targets):
+def write_alarms(server_cluster, targets, cluster_type = 'mysql'):
     status_ret = yield get_status_of_target(targets)
     status_ret_fetch_err = fetch_error_check()
     alarms, node_names = status_ret['alarms'], status_ret['node_names']
@@ -133,12 +135,13 @@ def write_alarms(server_cluster, targets):
     #call http://127.0.0.1:8082/db/containers?hclusterId={server_cluster}
 
     yield thread_pool.submit(_write_alarm_to_es, alarms, node_names,
-                               server_cluster)
+                               server_cluster, cluster_type)
     yield thread_pool.submit(_write_alarm_to_es, alarms_fetch_err,
-                            node_names_fetch_err, server_cluster)
+                            node_names_fetch_err, server_cluster,
+                            cluster_type)
 
 @coroutine
-def write_all_alarms():
+def write_all_mysql_alarms():
     # TODO
     # call the matrix method http://127.0.0.1:8082/api/hcluster
     # to get all the servers, and store it to server_cluster
@@ -147,12 +150,12 @@ def write_all_alarms():
     # TODO
     # call http://127.0.0.1:8082/db/containers?hclusterId=48
     # to get all the ip of the server cluster
-    targets = [dict(ipAddr='127.0.0.1',
-                   clusterName='test',
+    targets = [dict(ipAddr='10.185.81.79',
+                   clusterName='25_for_qa_test_ljl',
                    adminPassword='root',
                    adminUser='root')]
     try:
-        yield write_alarms(server_cluster, targets)
+        yield write_alarms(server_cluster, targets, 'mysql')
     except Exception as e:
         logging.error(e, exc_info=True)
 

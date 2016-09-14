@@ -7,10 +7,12 @@ import logging
 class AlarmsQueryHandler(RequestHandler):
 
     @coroutine
-    def get(self, server_cluster):
+    def get(self, server_cluster,
+            cluster_type):
         ret = {}
         try:
-            alarms = yield get_alarms(server_cluster)
+            alarms = yield get_alarms(server_cluster,
+                            cluster_type)
             ret['alarms'] = alarms
         except Exception as e:
             logging.error(e, exc_info=True)

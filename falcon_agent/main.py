@@ -4,7 +4,7 @@ from tornado.web import Application as TornadoWebApplication
 from tornado.options import define, options
 from es_pack.resource import CommResource as es_res
 from routers import urls
-from alarm_collect import write_all_alarms
+from alarm_collect import write_all_mysql_alarms
 
 define('debug', default=False, help='debug', type=bool)
 define('es_host', default='10.154.255.131:9200',
@@ -19,7 +19,8 @@ def main():
     app = TornadoWebApplication(urls,
                 debug=options.debug)
     app.listen(options.http_port)
-    tornado.ioloop.PeriodicCallback(write_all_alarms,
+    tornado.ioloop.PeriodicCallback(
+        write_all_mysql_alarms,
         12000).start()
     tornado.ioloop.IOLoop.instance().start()
 
