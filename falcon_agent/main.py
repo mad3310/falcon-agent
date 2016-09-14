@@ -10,7 +10,7 @@ define('debug', default=False, help='debug', type=bool)
 define('es_host', default='10.154.255.131:9200',
         help = 'es host')
 define('http_port', default=8000, help='http_port', type=int)
-define('matrix', default='http://10.154.238.20:8082',
+define('matrix', default='http://10.154.238.20:8080',
         help = 'matrix host')
 
 def main():

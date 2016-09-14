@@ -167,14 +167,14 @@ def _get_all_mysql(server_id):
         raise Return(ret)
 
 @coroutine
-def get_alarms(server_cluster, targets, cluster_type = 'mysql'):
+def get_alarms(server_cluster, targets):
     status_ret = yield get_status_of_target(targets)
     status_ret_fetch_err = fetch_error_check()
     alarms, node_names = status_ret['alarms'], status_ret['node_names']
     alarms_fetch_err, node_names_fetch_err = \
        status_ret_fetch_err['alarms'], status_ret_fetch_err['node_names']
-    normals = dict(alamrs=alarms, node_names=node_names)
-    fetch_errs = dict(alamrs=alarms_fetch_err,
+    normals = dict(alarms=alarms, node_names=node_names)
+    fetch_errs = dict(alarms=alarms_fetch_err,
                     node_names=node_names_fetch_err)
     raise Return(dict(normals=normals, fetch_errs=fetch_errs))
 
@@ -182,8 +182,8 @@ def get_alarms(server_cluster, targets, cluster_type = 'mysql'):
 def _write_cur_alarms(all_alarms, cur_nodes,
                     server_cluster, cluster_type):
     alarms, node_names = [], []
-    for i in len(all_alarms['node_names']):
-        if all_alarms['node_names'][i] not cur_nodes:
+    for i in xrange(len(all_alarms['node_names'])):
+        if all_alarms['node_names'][i] not in cur_nodes:
             continue
         alarms.append(all_alarms['alarms'][i])
         node_names.append(all_alarms['node_names'][i])
@@ -205,12 +205,14 @@ def write_all_mysql_alarms():
         #               adminUser='root')]
         targets = yield _get_all_mysql(server_cluster)
         try:
-            all_alarms = yield write_alarms(server_cluster, targets, 'mysql')
+            all_alarms = yield get_alarms(server_cluster, targets)
             cur_nodes.clear()
             cur_targets = yield _get_all_mysql(server_cluster)
             map(lambda x:cur_nodes.add(x['clusterName']), cur_targets)
-            yield _write_cur_alarms(all_alarms['normals'], cur_nodes)
-            yield _write_cur_alarms(all_alarms['fetch_errs'], cur_nodes)
+            yield _write_cur_alarms(all_alarms['normals'], cur_nodes,
+                                server_cluster, 'mysql')
+            yield _write_cur_alarms(all_alarms['fetch_errs'], cur_nodes,
+                                server_cluster, 'mysql')
         except Exception as e:
             logging.error(e, exc_info=True)
 
