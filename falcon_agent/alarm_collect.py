@@ -122,74 +122,80 @@ def get_status_of_target(targets):
     raise Return(dict(alarms=alarms, node_names=node_names))
 
 @coroutine
-def _get_matrix_auth(http_client):
+def _get_matrix_headers(http_client):
     auth_uri = MATRIX_AUTH_URL
     resp = yield http_client.fetch(auth_uri, raise_error=False)
     if resp.error:
         logging.error('request for auth failed')
         raise Return({})
-    auth = json.loads(resp.text) 
+    auth = json.loads(resp.body)
+    headers = {'Content-Type':'application/x-www-form-urlencoded'}
+    headers.update(auth)
     raise Return(auth)
 
 @coroutine
 def _get_all_cluster():
     http_client = AsyncHTTPClient()
-    auth = yield _get_matrix_auth()
+    headers = yield _get_matrix_headers(http_client)
     uri = '%s/api/hcluster' %options.matrix
     req = HTTPRequest(uri, follow_redirects=True,
                     allow_nonstandard_methods=True,
-                    client_id = auth['client'],
-                    client_secret = auth['client_secret'])
+                    headers = headers)
     resp = yield http_client.fetch(req, raise_error=False)
     if resp.error:
         logging.error('request for all hcluster fail')
         raise Return([])
     else:
-        ret = map(lambda x:x['id'], json.loads(resp.text))
+        ret = map(lambda x:x['id'], json.loads(resp.body))
         raise Return(ret)
 
 @coroutine
-def _get_all_mysql(server_id)
+def _get_all_mysql(server_id):
     http_client = AsyncHTTPClient()
-    auth = yield _get_matrix_auth()
+    headers = yield _get_matrix_headers(http_client)
     uri = '%s/db/containers?hclusterId=%d' %(options.matrix,
                                              int(server_id))
     req = HTTPRequest(uri, follow_redirects=True,
                     allow_nonstandard_methods=True,
-                    client_id = auth['client'],
-                    client_secret = auth['client_secret'])
+                    headers = headers)
     resp = yield http_client.fetch(req, raise_error=False)
     if resp.error:
         logging.error('request for all hcluster fail')
         raise Return([])
     else:
-        ret = json.loads(resp.text)
+        ret = json.loads(resp.body)
         raise Return(ret)
 
 @coroutine
-def write_alarms(server_cluster, targets, cluster_type = 'mysql'):
+def get_alarms(server_cluster, targets, cluster_type = 'mysql'):
     status_ret = yield get_status_of_target(targets)
     status_ret_fetch_err = fetch_error_check()
     alarms, node_names = status_ret['alarms'], status_ret['node_names']
     alarms_fetch_err, node_names_fetch_err = \
        status_ret_fetch_err['alarms'], status_ret_fetch_err['node_names']
-    #TODO
-    #need check is there deleted nodes, and those nodes should not
-    #record alarm
-    #call http://127.0.0.1:8082/db/containers?hclusterId={server_cluster}
+    normals = dict(alamrs=alarms, node_names=node_names)
+    fetch_errs = dict(alamrs=alarms_fetch_err,
+                    node_names=node_names_fetch_err)
+    raise Return(dict(normals=normals, fetch_errs=fetch_errs))
 
+@coroutine
+def _write_cur_alarms(all_alarms, cur_nodes,
+                    server_cluster, cluster_type):
+    alarms, node_names = [], []
+    for i in len(all_alarms['node_names']):
+        if all_alarms['node_names'][i] not cur_nodes:
+            continue
+        alarms.append(all_alarms['alarms'][i])
+        node_names.append(all_alarms['node_names'][i])
     yield thread_pool.submit(_write_alarm_to_es, alarms, node_names,
-                               server_cluster, cluster_type)
-    yield thread_pool.submit(_write_alarm_to_es, alarms_fetch_err,
-                            node_names_fetch_err, server_cluster,
-                            cluster_type)
-
+                           server_cluster, cluster_type)
 @coroutine
 def write_all_mysql_alarms():
     # call the matrix method http://127.0.0.1:8082/api/hcluster
     # to get all the servers, and store it to server_cluster
     # server_cluster = '48'
     server_clusters = yield _get_all_cluster()
+    cur_nodes = set()
     for server_cluster in server_clusters:
         # call http://127.0.0.1:8082/db/containers?hclusterId=48
         # to get all the ip of the server cluster
@@ -199,7 +205,12 @@ def write_all_mysql_alarms():
         #               adminUser='root')]
         targets = yield _get_all_mysql(server_cluster)
         try:
-            yield write_alarms(server_cluster, targets, 'mysql')
+            all_alarms = yield write_alarms(server_cluster, targets, 'mysql')
+            cur_nodes.clear()
+            cur_targets = yield _get_all_mysql(server_cluster)
+            map(lambda x:cur_nodes.add(x['clusterName']), cur_targets)
+            yield _write_cur_alarms(all_alarms['normals'], cur_nodes)
+            yield _write_cur_alarms(all_alarms['fetch_errs'], cur_nodes)
         except Exception as e:
-        logging.error(e, exc_info=True)
+            logging.error(e, exc_info=True)
 
