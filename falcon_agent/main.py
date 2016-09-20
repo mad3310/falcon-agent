@@ -28,7 +28,7 @@ def main():
                     options.smtp_port,
                     options.smtp_user,
                     options.smtp_passwd,
-                    interval=60)
+                    interval=300)
 
     app = TornadoWebApplication(urls,
                 debug=options.debug)

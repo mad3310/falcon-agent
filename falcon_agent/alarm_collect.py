@@ -56,6 +56,58 @@ def _write_alarm_to_es(alarms, node_names, server_cluster,
     es_res.record_resource_via_bulk(index, 
         node_names, cluster_type, alarms)
 
+def _monitor_main_parse(resp):
+    value = json.loads(resp.body)
+    code = value['meta']['code']
+    ret = dict(serious = {},
+               general = {},
+               nothing = {})
+    if code != 200:
+        return False, ret
+    for _type in value['response']:
+        for item in value['response'][_type]:
+            _val = value['response'][_type][item]
+            monitor_type_item = '%s.%s' %(_type, item)
+            ret_code = _val['alarm']
+            message = _val['message']
+            if ret_code == 'tel:sms:email':
+                ret['serious'][monitor_type_item] = message
+                ret['serious']['warn_method'] = 'tel:sms:email'
+            elif ret_code == 'sms:email':
+                ret['general'][monitor_type_item] = message
+            else:
+                ret['nothing'][monitor_type_item] = message
+    return True, ret
+
+@coroutine
+def get_main_status_of_target(targets):
+    http_client = AsyncHTTPClient()
+    resp, alarms, node_names = [], [], []
+    for target in targets:
+        ip = target['ipAddr']
+        user = target['adminUser']
+        passwd  = target['adminPassword']
+        uri = 'http://%s:8888/mcluster/monitor' %ip
+        _tmp = http_client.fetch(uri, method = 'GET',
+                raise_error = False,
+                follow_redirects=True,
+                auth_username = user,
+                auth_password = passwd,
+                allow_nonstandard_methods=True)
+        resp.append(_tmp)
+    ret = yield resp
+    for i in range(len(targets)):
+        node_name = targets[i]['clusterName']
+        _resp = ret[i]
+        if not _resp.error:
+            flag, alarm_info = _monitor_main_parse(_resp)
+            if flag:
+                node_names.append(node_name)
+                alarms.append(alarm_info)
+    raise Return(dict(alarms=alarms, node_names=node_names))
+
+
+
 def _monitor_value_parse(resp):
     value = json.loads(resp.body)
     code = value['meta']['code']
@@ -169,14 +221,19 @@ def _get_all_mysql(server_id):
 @coroutine
 def get_alarms(server_cluster, targets):
     status_ret = yield get_status_of_target(targets)
+    main_status_ret = yield get_main_status_of_target(targets)
     status_ret_fetch_err = fetch_error_check()
     alarms, node_names = status_ret['alarms'], status_ret['node_names']
+    alarms_main, node_names_main = main_status_ret['alarms'],\
+                                  main_status_ret['node_names']
     alarms_fetch_err, node_names_fetch_err = \
        status_ret_fetch_err['alarms'], status_ret_fetch_err['node_names']
     normals = dict(alarms=alarms, node_names=node_names)
     fetch_errs = dict(alarms=alarms_fetch_err,
                     node_names=node_names_fetch_err)
-    raise Return(dict(normals=normals, fetch_errs=fetch_errs))
+    raise Return(dict(normals=normals,
+                      fetch_errs=fetch_errs,
+                      main_status=alarms_main))
 
 @coroutine
 def _write_cur_alarms(all_alarms, cur_nodes,
@@ -212,6 +269,8 @@ def write_all_mysql_alarms():
             yield _write_cur_alarms(all_alarms['normals'], cur_nodes,
                                 server_cluster, 'mysql')
             yield _write_cur_alarms(all_alarms['fetch_errs'], cur_nodes,
+                                server_cluster, 'mysql')
+            yield _write_cur_alarms(all_alarms['main_status'], cur_nodes,
                                 server_cluster, 'mysql')
         except Exception as e:
             logging.error(e, exc_info=True)

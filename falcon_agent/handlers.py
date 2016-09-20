@@ -33,8 +33,13 @@ class AlarmsQueryHandler(RequestHandler):
                             MailEgine.send_exception_email,
                             options.mailfrom, mailto, _subject,
                             json.dumps(content))
-                if status: 
-                    yield send_sms(sms_to, json.dumps(content))
+                if status:
+                    if content.has_key('general'):
+                        del content['general']
+                    if content.has_key('serious') and \
+                         alarm['serious'].has_key('warn_method') and \
+                         alarm['serious']['warn_method'] == 'tel:sms:email':
+                        yield send_sms(sms_to, json.dumps(content))
 
     @coroutine
     def get(self, server_cluster,
