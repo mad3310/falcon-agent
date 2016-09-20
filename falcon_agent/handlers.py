@@ -21,15 +21,13 @@ class AlarmsQueryHandler(RequestHandler):
             raise Return(0) 
         content = {} 
         for alarm in alarms:
-            serious, general = [], []
+            content, serious, general = {}, [], []
             node_name = alarm['node_name']
             if alarm['serious']:
-                serious.append(alarm['serious'])
+                content['serious'] = alarm['serious']
             if alarm['general']:
-                general.append(alarm['general'])
-            if serious or general:
-                content = dict(serious = serious,
-                               general = general)
+                content['general'] = alarm['general']
+            if content:
                 _subject = '%s_%s' %(node_name, subject)
                 status = yield thread_pool.submit(
                             MailEgine.send_exception_email,
