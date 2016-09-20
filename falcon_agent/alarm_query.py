@@ -11,6 +11,7 @@ import time
 import datetime
 from concurrent.futures import ThreadPoolExecutor
 from alarm_collect import MONITOR_INDEX_IN_ES
+
 thread_pool = ThreadPoolExecutor(10)
 
 @coroutine
@@ -21,4 +22,6 @@ def get_alarms(server_cluster, cluster_type):
                     es_res.retireve_resource,
                     index, None, cluster_type,
                     120)
-    raise Return(alarms) 
+    raise Return(alarms)
+
+
