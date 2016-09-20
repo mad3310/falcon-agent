@@ -12,6 +12,7 @@ RUN rpm -ivh /tmp/Lefalcon-agent-1.0-1.el6.x86_64.rpm
 RUN yum install -y vim
 RUN yum install -y unzip
 RUN yum install -y tar
+RUN yum install -y cronie
 
 RUN alias vi='vim'
 RUN alias ll='ls -l'
@@ -25,5 +26,5 @@ RUN chmod 755 /usr/local/init/init.sh
 RUN yum install -y http://10.200.91.144/gcp-falcon-agent-0.0.1-1.x86_64.rpm
 RUN yum install -y http://10.200.91.144/es_pack-0.0.1a1-1.x86_64.rpm
 
-ENTRYPOINT bash /usr/local/init/init.sh && service falcon-agent start &&  /bin/bash
+ENTRYPOINT bash /usr/local/init/init.sh && service falcon-agent start && service crond start &&  /bin/bash
 #ENTRYPOINT bash /usr/local/init/init.sh && /bin/bash
