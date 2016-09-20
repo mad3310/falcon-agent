@@ -22,7 +22,7 @@ def send_sms(mobiles, content):
                 'task': {
                    'name': 'gcp_mcluster_monitor', 
                    'remark': 'Remark'
-                }
+                },
                 'detail': detail
     }
     url = '%s&taskData=%s' %(URL, json.dumps(taskData))

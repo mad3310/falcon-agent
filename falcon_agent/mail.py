@@ -106,7 +106,7 @@ class MailEgine(object):
         return message 
 
     def _mail_md5(self, mailfrom, to, subject, content):
-        src = '%s%s%s%s' %(mailfrom, to, subject, content)
+        src = '%s%s%s%s' %(mailfrom, to, subject)
         myMd5 = hashlib.md5()
         myMd5.update(src)
         return myMd5.hexdigest()
@@ -152,7 +152,7 @@ class MailEgine(object):
             return False 
 
         message = self.mail_report(mailfrom, to, subject, body,
-                                md5_value, attachments, html)
+                                None, attachments, html)
         try:
             logging.info(('send email from %s to %s succeed,'
                            'subject:%s, mail body is:\n%s')

@@ -6,6 +6,8 @@ from es_pack.resource import CommResource as es_res
 from routers import urls
 from alarm_collect import write_all_mysql_alarms
 from mail import MailEgine
+from tornado.gen import coroutine, Return
+from alarm_query import mail_egine_scan
 
 define('debug', default=False, help='debug', type=bool)
 define('es_host', default='10.154.255.131:9200',
@@ -18,10 +20,6 @@ define('smtp_port', default=587, help = 'smtp port')
 define('smtp_user', default='mcluster', help = 'smtp user')
 define('smtp_passwd', default='Mcl_20140903!', help = 'smtp pass')
 define('mailfrom', default='mcluster@letv.com', help = 'mail from')
-
-@coroutine
-def mail_egine_scan():
-    yield thread_pool.submit(MailEgine.mail_scan_work)
 
 def main():
     tornado.options.parse_command_line()

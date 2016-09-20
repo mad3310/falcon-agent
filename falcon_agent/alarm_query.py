@@ -11,8 +11,13 @@ import time
 import datetime
 from concurrent.futures import ThreadPoolExecutor
 from alarm_collect import MONITOR_INDEX_IN_ES
+from mail import MailEgine
 
 thread_pool = ThreadPoolExecutor(10)
+
+@coroutine
+def mail_egine_scan():
+    yield thread_pool.submit(MailEgine.mail_scan_work)
 
 @coroutine
 def get_alarms(server_cluster, cluster_type):
