@@ -106,7 +106,7 @@ class MailEgine(object):
         return message 
 
     def _mail_md5(self, mailfrom, to, subject, content):
-        src = '%s%s%s%s' %(mailfrom, to, subject)
+        src = '%s%s%s' %(mailfrom, to, subject)
         myMd5 = hashlib.md5()
         myMd5.update(src)
         return myMd5.hexdigest()

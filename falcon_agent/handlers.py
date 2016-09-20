@@ -18,19 +18,25 @@ class AlarmsQueryHandler(RequestHandler):
     def _alarm_parse(self, alarms, mailto,
                     subject, sms_to):
         if len(alarms) == 0:
-            raise Return(0)
-        serious, general = [], []
+            raise Return(0) 
         content = {} 
         for alarm in alarms:
+            serious, general = [], []
             node_name = alarm['node_name']
-            serious.append(alarm.get('serious',{}))
-            general.append(alarm.get('general',{}))
-            content = dict(serious = serious, general = general)
-            _subject = '%s_%s' %(node_name, subject)
-            status = yield thread_pool.submit(MailEgine.send_exception_email,
-              options.mailfrom, mailto, _subject, json.dumps(content))
-            if status: 
-                yield send_sms(sms_to, json.dumps(content))
+            if alarm['serious']:
+                serious.append(alarm['serious'])
+            if alarm['general']:
+                general.append(alarm['general'])
+            if serious or general:
+                content = dict(serious = serious,
+                               general = general)
+                _subject = '%s_%s' %(node_name, subject)
+                status = yield thread_pool.submit(
+                            MailEgine.send_exception_email,
+                            options.mailfrom, mailto, _subject,
+                            json.dumps(content))
+                if status: 
+                    yield send_sms(sms_to, json.dumps(content))
 
     @coroutine
     def get(self, server_cluster,
