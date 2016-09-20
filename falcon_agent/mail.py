@@ -187,14 +187,14 @@ class MailEgine(object):
             mail_dict = self.mails[md5_value]
             mailfrom = mail_dict['mailfrom']
             to = mail_dict['to']
-            subject = 'OK--%s' %mail_dict['subject']
+            subject = '%s---OK' %mail_dict['subject']
             body = 'DONOT WORRY'
             fr, mailto = self._mail_address_filter(mailfrom, to)
             yield dict(md5_value = md5_value,
                        mailfrom = fr,
                        mailto = mailto,
                        email = self.mail_report(mailfrom, mailto,
-                                      subject, body, md5_value))
+                                      subject, body, NONE))
     
     def mail_scan_work(self):
         self._ok_mail_send()
