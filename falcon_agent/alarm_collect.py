@@ -231,9 +231,11 @@ def get_alarms(server_cluster, targets):
     normals = dict(alarms=alarms, node_names=node_names)
     fetch_errs = dict(alarms=alarms_fetch_err,
                     node_names=node_names_fetch_err)
+    main_status = dict(alarms=alarms_main,
+                    node_names=node_names_main)
     raise Return(dict(normals=normals,
                       fetch_errs=fetch_errs,
-                      main_status=alarms_main))
+                      main_status=main_status))
 
 @coroutine
 def _write_cur_alarms(all_alarms, cur_nodes,

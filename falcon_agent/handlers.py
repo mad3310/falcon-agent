@@ -37,8 +37,9 @@ class AlarmsQueryHandler(RequestHandler):
                     if content.has_key('general'):
                         del content['general']
                     if content.has_key('serious') and \
-                         alarm['serious'].has_key('warn_method') and \
-                         alarm['serious']['warn_method'] == 'tel:sms:email':
+                         content['serious'].has_key('warn_method') and \
+                         content['serious']['warn_method'] == 'tel:sms:email':
+                         del content['serious']['warn_method']
                         yield send_sms(sms_to, json.dumps(content))
 
     @coroutine
