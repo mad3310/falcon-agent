@@ -194,7 +194,7 @@ class MailEgine(object):
                        mailfrom = fr,
                        mailto = mailto,
                        email = self.mail_report(mailfrom, mailto,
-                                      subject, body, NONE))
+                                      subject, body, None))
     
     def mail_scan_work(self):
         self._ok_mail_send()
