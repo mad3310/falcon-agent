@@ -45,4 +45,4 @@ sed -i "s/127\.0\.0\.1/${IP}/g" cfg.json
 sed -i "s/ihbs\.sys\.monitor\.letv\.cn/10\.183\.96\.57/g" cfg.json
 cd -
 chmod +x /opt/letv/falcon-agent/check_scripts/check_all.sh
-echo "*/3 * * * * root /opt/letv/falcon-agent/check_scripts/check_all.sh >>/dev/null">> /etc/crontab
+echo "*/2 * * * * root /opt/letv/falcon-agent/check_scripts/check_all.sh >>/dev/null">> /etc/crontab
