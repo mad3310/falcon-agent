@@ -2,5 +2,5 @@
 from handlers import AlarmsQueryHandler
 
 urls = [
-    (r'/alarms/query/(\w+)', AlarmsQueryHandler),
+    (r'/alarms/query/(\w+)/(\w+)', AlarmsQueryHandler),
 ]
