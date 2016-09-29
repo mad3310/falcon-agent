@@ -10,14 +10,23 @@ import json
 import time
 import datetime
 from concurrent.futures import ThreadPoolExecutor
+from alarm_collect import MONITOR_INDEX_IN_ES
+from mail import MailEgine
 
 thread_pool = ThreadPoolExecutor(10)
 
 @coroutine
-def get_alarms(server_cluster):
-    index = '%s-rds-monitor' % server_cluster
+def mail_egine_scan():
+    yield thread_pool.submit(MailEgine.mail_scan_work)
+
+@coroutine
+def get_alarms(server_cluster, cluster_type):
+    index = '%s-%s-%s' %(server_cluster,
+                  cluster_type, MONITOR_INDEX_IN_ES)
     alarms = yield thread_pool.submit(
                     es_res.retireve_resource,
-                    index, None, 'mcluster',
+                    index, None, cluster_type,
                     120)
-    raise Return(alarms) 
+    raise Return(alarms)
+
+
