@@ -23,7 +23,7 @@ define('mailfrom', default='mcluster@letv.com', help = 'mail from')
 
 def main():
     tornado.options.parse_command_line()
-    es_res.connect(options.es_host)
+    es_res.connect(options.es_host, 1)
     MailEgine.egine_fire_start(options.smtp_host,
                     options.smtp_port,
                     options.smtp_user,
