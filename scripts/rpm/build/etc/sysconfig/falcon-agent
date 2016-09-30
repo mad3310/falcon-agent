@@ -1,4 +1,4 @@
-NAME=falcon-agent
+NAME=monitor-center
 
 MM_LOG_DIR=/var/log/$NAME
 USER=root

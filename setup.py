@@ -3,15 +3,15 @@
 #from distutils.core import setup
 from setuptools import setup
 setup(
-    name = 'falcon_agent',
+    name = 'monitor_center',
     version = '0.0.1',
-    packages = ['falcon_agent'],
+    packages = ['monitor_center'],
     author = 'letv gcp',
     author_email = 'liujinliu@le.com',
-    description = 'falcon agent',
+    description = 'monitor center',
     entry_points = {
         'console_scripts':[
-            'falcon-agent-start=falcon_agent.main:main'
+            'monitor-center-start=monitor_center.main:main'
             ]
         }
     )

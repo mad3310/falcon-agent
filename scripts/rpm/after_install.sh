@@ -4,7 +4,8 @@
 #VENV_NAME=falcon_agent_py26
 
 #source /opt/${VIRTUAL_ENV_ROOT}/${VENV_NAME}/bin/activate
-cd /opt/letv/falcon-agent/packages
+RPM_NAME=monitor-center
+cd /opt/letv/${RPM_NAME}/packages
 tar zxf setuptools-7.0.tar.gz 
 tar zxf pip-8.1.2.tar.gz 
 cd setuptools-7.0
@@ -28,9 +29,9 @@ pip install tornado-4.3.tar.gz
 
 #cd /opt/letv/falcon-agent && mkdir -p falcon-agent && tar zxf *.tar.gz -C ./falcon-agent --strip-components 1
 #cd falcon-agent && python setup.py build && python setup.py install && cd -
-cd /opt/letv/falcon-agent && pip install *.tar.gz
+cd /opt/letv/${RPM_NAME} && pip install *.tar.gz
 
-chmod +x /etc/init.d/falcon-agent
-chkconfig --add falcon-agent
+chmod +x /etc/init.d/${RPM_NAME}
+chkconfig --add ${RPM_NAME}
 
 exit 0

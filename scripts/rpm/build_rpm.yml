@@ -8,7 +8,7 @@ source_type: dir
 target_type: rpm
 
 # 软件包名
-name: gcp-falcon-agent 
+name: monitor-center
 # 软件包版本号
 version: 0.0.1
 # 软件包发型序号，即相同版本号（version）的代码这是第几次打包发型
@@ -26,7 +26,7 @@ after_remove: after_remove.sh
 category: GCP
 # 软件包描述
 description: |
-    gcp-falcon-agent is a falcon agent for gcp.
+    monitor-center is a monitor agent for gcp.
 # 软件包项目主页
 url: http://git.letv.cn/liujinliu/falcon-agent.git
 # 软件包维护人员

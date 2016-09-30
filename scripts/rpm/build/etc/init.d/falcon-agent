@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# falcon-agent
+# monitor-center 
 # Author: 	zhoubingzheng <zhoubingzheng@letv.com>
 #
 # chkconfig: 2345 09 92
@@ -15,7 +15,7 @@
 # Short-Description: image manager
 ### END INIT INFO
 
-NAME=falcon-agent
+NAME=monitor-center
 #VIRTUALENV=/opt/virtualenvs/falcon_agent_py26
 # source function library
 . /etc/rc.d/init.d/functions
@@ -41,7 +41,7 @@ start () {
 	touch $PIDFILE
 	chown $USER:$GROUP $PIDFILE
     BASE_DIR=/opt/letv/image-manager
-	MMCMD="falcon-agent-start >>$CONSOLELOG 2>&1 & 	\
+	MMCMD="monitor-center-start >>$CONSOLELOG 2>&1 & 	\
 		echo "'$! >'"$PIDFILE"
 
         echo -n $"Starting ${NAME}:"
