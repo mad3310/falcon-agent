@@ -1,11 +1,10 @@
 #coding=utf-8
 from tornado.options import define, options
 from tornado.ioloop import PeriodicCallback
-from tornado.web import RequestHandler,HTTPError 
+from tornado.web import RequestHandler,HTTPError
 from tornado.gen import coroutine, Return
 from tornado.httpclient import AsyncHTTPClient
 from tornado.httpclient import HTTPRequest
-from es_pack.resource import CommResource as es_res
 import json
 import time
 import datetime
@@ -15,13 +14,15 @@ import base64
 
 thread_pool = ThreadPoolExecutor(10)
 
+MATRIX_AUTH = None
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 WARNING_TIME_DIFF = 210
 TIMEOUT_WARN = 'please check async api, the data is out of date!'
-MONITOR_INDEX_IN_ES='cluster-monitor'
+MONITOR_INDEX = 'cluster-monitor'
 FETCH_ERR_HISTORY = {}
 MAX_FETCH_ERR = 3
-MATRIX_AUTH_URL = 'https://login.lecloud.com/nopagelogin?username=matrix&password=matrix' 
+MATRIX_AUTH_URL = 'https://login.lecloud.com/nopagelogin?username=matrix&password=matrix'
+ALARMS_CACHE = {}
 def _fetch_error_update(fetch_error):
     if not FETCH_ERR_HISTORY:
         for _node in fetch_error:
@@ -49,12 +50,15 @@ def fetch_error_check():
             node_names.append(k)
     return dict(alarms=alarms, node_names=node_names)
 
-def _write_alarm_to_es(alarms, node_names, server_cluster,
+def _write_alarm_to_cache(alarms, node_names, server_cluster,
                        cluster_type = 'mysql'):
-    index = '%s-%s-%s' %(server_cluster, cluster_type,
-                        MONITOR_INDEX_IN_ES)
-    es_res.record_resource_via_bulk(index, 
-        node_names, cluster_type, alarms)
+    index = '%s-%s' %(server_cluster, MONITOR_INDEX)
+    k = '%s-%s' %(index, cluster_type)
+    for i in xrange(len(node_names)):
+        if k in ALARMS_CACHE:
+            ALARMS_CACHE[k][node_names[i]] = alarms[i]
+        else:
+            ALARMS_CACHE[k] = {}
 
 def _monitor_main_parse(resp):
     value = json.loads(resp.body)
@@ -120,9 +124,9 @@ def _monitor_value_parse(resp):
         for item in value['response'][_type]:
             _val = value['response'][_type][item]
             monitor_type_item = '%s.%s' %(_type, item)
-            ret_code = _val['alarm']
-            error_record = _val['error_record']
-            message = _val['message']
+            ret_code = _val.get('alarm', 'nothing')
+            error_record = _val.get('error_record','no-record')
+            message = _val.get('message', 'N/A')
             if error_record:
                 error_record = ", error_record=%s" % str(error_record)
                 message = '%s%s' %(message, str(error_record))
@@ -163,7 +167,7 @@ def get_status_of_target(targets):
         _resp = ret[i]
         if _resp.error:
             fetch_error.add(node_name)
-        else: 
+        else:
             flag, alarm_info = _monitor_value_parse(_resp)
             if not flag:
                 fetch_error.add(node_name)
@@ -175,21 +179,25 @@ def get_status_of_target(targets):
 
 @coroutine
 def _get_matrix_headers(http_client):
-    auth_uri = MATRIX_AUTH_URL
-    resp = yield http_client.fetch(auth_uri, raise_error=False)
-    if resp.error:
-        logging.error('request for auth failed')
-        raise Return({})
-    auth = json.loads(resp.body)
-    headers = {'Content-Type':'application/x-www-form-urlencoded'}
-    headers.update(auth)
-    raise Return(auth)
+    now = datetime.datetime.now()
+    global MATRIX_AUTH
+    if (not MATRIX_AUTH) or (now - MATRIX_AUTH['last']).seconds > 300:
+        auth_uri = MATRIX_AUTH_URL
+        resp = yield http_client.fetch(auth_uri, raise_error=False)
+        if resp.error:
+            logging.error('request for auth failed')
+            raise Return({})
+        auth = json.loads(resp.body)
+        MATRIX_AUTH = dict(auth = auth, last = now)
+    raise Return(MATRIX_AUTH['auth'])
 
 @coroutine
 def _get_all_cluster():
+    if options.server_ids:
+        raise Return(options.server_ids.split(','))
     http_client = AsyncHTTPClient()
     headers = yield _get_matrix_headers(http_client)
-    uri = '%s/api/hcluster' %options.matrix
+    uri = '%s/api/hcluster?type=RDS' %options.matrix
     req = HTTPRequest(uri, follow_redirects=True,
                     allow_nonstandard_methods=True,
                     headers = headers)
@@ -237,17 +245,17 @@ def get_alarms(server_cluster, targets):
                       fetch_errs=fetch_errs,
                       main_status=main_status))
 
-@coroutine
 def _write_cur_alarms(all_alarms, cur_nodes,
                     server_cluster, cluster_type):
     alarms, node_names = [], []
+
     for i in xrange(len(all_alarms['node_names'])):
         if all_alarms['node_names'][i] not in cur_nodes:
             continue
         alarms.append(all_alarms['alarms'][i])
         node_names.append(all_alarms['node_names'][i])
-    yield thread_pool.submit(_write_alarm_to_es, alarms, node_names,
-                           server_cluster, cluster_type)
+    _write_alarm_to_cache(alarms, node_names,
+                       server_cluster, cluster_type)
 @coroutine
 def write_all_mysql_alarms():
     # call the matrix method http://127.0.0.1:8082/api/hcluster
@@ -268,11 +276,11 @@ def write_all_mysql_alarms():
             cur_nodes.clear()
             cur_targets = yield _get_all_mysql(server_cluster)
             map(lambda x:cur_nodes.add(x['clusterName']), cur_targets)
-            yield _write_cur_alarms(all_alarms['normals'], cur_nodes,
+            _write_cur_alarms(all_alarms['normals'], cur_nodes,
                                 server_cluster, 'mysql')
-            yield _write_cur_alarms(all_alarms['fetch_errs'], cur_nodes,
+            _write_cur_alarms(all_alarms['fetch_errs'], cur_nodes,
                                 server_cluster, 'mysql')
-            yield _write_cur_alarms(all_alarms['main_status'], cur_nodes,
+            _write_cur_alarms(all_alarms['main_status'], cur_nodes,
                                 server_cluster, 'mysql')
         except Exception as e:
             logging.error(e, exc_info=True)

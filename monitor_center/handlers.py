@@ -6,7 +6,7 @@ from tornado.gen import coroutine, Return
 import logging
 from mail import MailEgine
 from tornado.options import define, options
-from sms import send_sms
+from sms import send_sms, send_sms_and_phone
 from concurrent.futures import ThreadPoolExecutor
 import json
 
@@ -18,11 +18,11 @@ class AlarmsQueryHandler(RequestHandler):
     def _alarm_parse(self, alarms, mailto,
                     subject, sms_to):
         if len(alarms) == 0:
-            raise Return(0) 
-        content = {} 
-        for alarm in alarms:
+            raise Return(0)
+        content = {}
+        for node_name in alarms:
+            alarm = alarms[node_name]
             content, serious, general = {}, [], []
-            node_name = alarm['node_name']
             if alarm['serious']:
                 content['serious'] = alarm['serious']
             if alarm['general']:
@@ -41,6 +41,7 @@ class AlarmsQueryHandler(RequestHandler):
                          content['serious']['warn_method'] == 'tel:sms:email':
                         del content['serious']['warn_method']
                         yield send_sms(sms_to, json.dumps(content))
+                        yield send_sms_and_phone(sms_to, '%s,%s' %('serious', node_name))
 
     @coroutine
     def get(self, server_cluster,
@@ -51,7 +52,7 @@ class AlarmsQueryHandler(RequestHandler):
         _sms_to = _mailto = self.get_argument('smsto','liujinliu:18201190271')
         sms_to = _sms_to.split(',')
         try:
-            alarms = yield get_alarms(server_cluster,
+            alarms = get_alarms(server_cluster,
                             cluster_type)
             yield self._alarm_parse(alarms, mailto,
                     'ALERT OF %s ON %s' %(cluster_type, server_cluster),
