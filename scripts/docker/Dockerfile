@@ -21,10 +21,9 @@ RUN mkdir -p /usr/local/init/
 ADD init/init.sh /usr/local/init/init.sh
 RUN chmod 755 /usr/local/init/init.sh
 
-RUN yum install -y es_pack 
+# RUN yum install -y es_pack 
 RUN yum install -y monitor-center 
 #RUN yum install -y http://10.200.91.144/monitor-center-0.0.1-1.x86_64.rpm
-#RUN yum install -y http://10.200.91.144/es_pack-0.0.1a1-1.x86_64.rpm
 
 #ENTRYPOINT bash /usr/local/init/init.sh && service monitor-center start && service crond start &&  /bin/bash
 ENTRYPOINT bash /usr/local/init/init.sh && /bin/bash
